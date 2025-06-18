@@ -152,7 +152,25 @@ class GameManager:
                 return True
 
         return False
+def update_thief_direction(self, new_row, new_col):
+        [current_row, current_col] = self.state.thief_player.getRC()
+        self.state.thief_animation_state = (self.state.thief_animation_state + 1) % len(IMAGE_THIEF)
 
+        if new_row > current_row:
+            self.state.thief_player.change_state(-90, IMAGE_THIEF[self.state.thief_animation_state])
+        elif new_row < current_row:
+            self.state.thief_player.change_state(90, IMAGE_THIEF[self.state.thief_animation_state])
+        elif new_col > current_col:
+            self.state.thief_player.change_state(0, IMAGE_THIEF[self.state.thief_animation_state])
+        elif new_col < current_col:
+            self.state.thief_player.change_state(180, IMAGE_THIEF[self.state.thief_animation_state])
+
+    def get_random_valid_move(self, row, col):
+        for [direction_row, direction_col] in DDX:
+            new_row, new_col = direction_row + row, direction_col + col
+            if Thief_check(self.state.maze_map, new_row, new_col, self.state.height, self.state.width):
+                return [new_row, new_col]
+        return []
     def process_police_movement(self, police_new_positions, movement_timer):
         for idx in range(len(self.state.police_objects)):
             [old_police_row, old_police_col] = self.state.police_objects[idx].getRC()
