@@ -196,3 +196,76 @@ def update_thief_direction(self, new_row, new_col):
                     if food_row == old_police_row and food_col == old_police_col:
                         self.state.maze_map[food_row][food_col] = FOOD
                         break        
+    
+    def process_thief_movement(self, new_thief_position, movement_timer):
+        [old_thief_row, old_thief_col] = self.state.thief_player.getRC()
+        [new_thief_row, new_thief_col] = new_thief_position
+
+        if old_thief_row < new_thief_row:
+            self.state.thief_player.move(1, 0)
+        elif old_thief_row > new_thief_row:
+            self.state.thief_player.move(-1, 0)
+        elif old_thief_col < new_thief_col:
+            self.state.thief_player.move(0, 1)
+        elif old_thief_col > new_thief_col:
+            self.state.thief_player.move(0, -1)
+
+        movement_complete = (movement_timer >= SIZE_WALL or 
+                            self.state.thief_player.touch_New_RC(new_thief_row, new_thief_col))
+        
+        if movement_complete:
+            self.state.thief_player.setRC(new_thief_row, new_thief_col)
+            self.state.score -= 1
+
+            for idx in range(len(self.state.food_objects)):
+                [food_row, food_col] = self.state.food_objects[idx].getRC()
+                if food_row == new_thief_row and food_col == new_thief_col:
+                    self.state.maze_map[food_row][food_col] = EMPTY
+                    self.state.food_objects.pop(idx)
+                    self.state.food_positions.pop(idx)
+                    self.state.score += 20
+                    break
+                    
+            return True
+        return False
+        
+    def calculate_thief_move(self, thief_row, thief_col, result):
+        search = SearchAlgorithms(self.state.maze_map, self.state.food_positions, 
+                                 thief_row, thief_col, self.state.height, self.state.width)
+        
+        new_thief_position = []
+        
+        if self.state.current_level == 1:
+            if not result:
+                result = search.execute(ALGORITHMS=LEVEL_TO_ALGORITHM["LEVEL1"])
+                if result:
+                    result.pop(0)
+                    new_thief_position = result[0] if result else []
+            elif len(result) > 1:
+                result.pop(0)
+                new_thief_position = result[0]
+                
+        elif self.state.current_level == 2:
+            if not result:
+                result = search.execute(ALGORITHMS=LEVEL_TO_ALGORITHM["LEVEL2"])
+                if result:
+                    result.pop(0)
+                    new_thief_position = result[0] if result else []
+            elif len(result) > 1:
+                result.pop(0)
+                new_thief_position = result[0]
+                
+        elif self.state.current_level == 3 and self.state.food_positions:
+            new_thief_position = search.execute(ALGORITHMS=LEVEL_TO_ALGORITHM["LEVEL3"], 
+                                              visited=self.state.visit_counter)
+            self.state.visit_counter[thief_row][thief_col] += 1
+
+        elif self.state.current_level == 4 and self.state.food_positions:
+            new_thief_position = search.execute(ALGORITHMS=LEVEL_TO_ALGORITHM["LEVEL4"], 
+                                              depth=4, Score=self.state.score)
+
+        if (self.state.food_positions and 
+            (not new_thief_position or [thief_row, thief_col] == new_thief_position)):
+            new_thief_position = self.get_random_valid_move(thief_row, thief_col)
+            
+        return new_thief_position, result
