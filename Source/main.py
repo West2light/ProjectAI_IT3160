@@ -152,7 +152,7 @@ class GameManager:
                 return True
 
         return False
-def update_thief_direction(self, new_row, new_col):
+    def update_thief_direction(self, new_row, new_col):
         [current_row, current_col] = self.state.thief_player.getRC()
         self.state.thief_animation_state = (self.state.thief_animation_state + 1) % len(IMAGE_THIEF)
 
@@ -269,3 +269,135 @@ def update_thief_direction(self, new_row, new_col):
             new_thief_position = self.get_random_valid_move(thief_row, thief_col)
             
         return new_thief_position, result
+    def start_game(self):
+        police_new_positions = []
+        result = []
+        new_thief_position = []
+        self.initialize_game_data()
+        thief_can_move = True
+
+        game_exit = False
+        is_moving = False
+        movement_timer = 0
+        game_status = 0
+        delay = 100
+
+        while not game_exit:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.show_menu()
+                    return
+
+            if delay > 0:
+                delay -= 1
+                
+            if delay <= 0:
+                if is_moving:
+                    movement_timer += 1 
+
+                    if police_new_positions:
+                        self.process_police_movement(police_new_positions, movement_timer)
+
+                    if new_thief_position:
+                        movement_done = self.process_thief_movement(new_thief_position, movement_timer)
+                        if movement_done:
+                            is_moving = False
+                            new_thief_position = []
+
+                    if self.check_collision_with_police():
+                        thief_can_move = False
+                        game_exit = True
+                        game_status = -1
+
+                    if not self.state.food_positions:
+                        game_status = 1
+                        game_exit = True
+
+                    if movement_timer >= SIZE_WALL:
+                        is_moving = False
+                else:
+                    if self.state.current_level == 3:
+                        police_new_positions = self.generate_police_movements(movement_type=1)
+                    elif self.state.current_level == 4:
+                        police_new_positions = self.generate_police_movements(movement_type=2)
+                    else:
+                        police_new_positions = self.generate_police_movements(movement_type=0)
+
+                    is_moving = True
+                    movement_timer = 0
+
+                    if not thief_can_move:
+                        continue
+
+                    [thief_row, thief_col] = self.state.thief_player.getRC()
+                    new_thief_position, result = self.calculate_thief_move(thief_row, thief_col, result)
+                        
+                    if new_thief_position:
+                        self.update_thief_direction(new_thief_position[0], new_thief_position[1])
+                        if self.check_collision_with_police(new_thief_position[0], new_thief_position[1]):
+                            thief_can_move = False
+                            game_exit = True
+                            game_status = -1
+
+            self.screen.fill(BLACK)
+            self.draw_game_objects()
+            pygame.display.flip()
+            self.clock.tick(FPS)
+
+        self.handle_game_end(game_status)
+        
+    def handle_game_end(self, status):
+        self.state.game_end_done = False
+        lose_bg = pygame.image.load("images/gameover.png")
+        lose_bg = pygame.transform.scale(lose_bg, (WIDTH, HEIGHT))
+        win_bg = pygame.image.load("images/win1.png")
+        win_bg = pygame.transform.scale(win_bg, (WIDTH, HEIGHT))
+
+        def click_continue():
+            self.state.game_end_done = True
+
+        def click_quit():
+            pygame.quit()
+            sys.exit(0)
+
+        btn_continue = Button(WIDTH // 2 - 300, HEIGHT // 2 - 50, 200, 100, self.screen, "CONTINUE", click_continue)
+        btn_quit = Button(WIDTH // 2 + 50, HEIGHT // 2 - 50, 200, 100, self.screen, "QUIT", click_quit)
+
+        delay = 100
+        while not self.state.game_end_done:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit(0)
+
+            if delay > 0:
+                delay -= 1
+                pygame.display.flip()
+                self.clock.tick(FPS)
+                continue
+
+            if status == -1:
+                self.screen.blit(lose_bg, (0, 0))
+            else:
+                self.screen.blit(win_bg, (0, 0))
+                score_text = self.large_font.render(f'Your Score: {self.state.score}', False, RED)
+                self.screen.blit(score_text, (WIDTH // 4 - 65, 10))
+
+            btn_quit.process()
+            btn_continue.process()
+
+            pygame.display.flip()
+            self.clock.tick(FPS)
+
+        self.show_menu()
+        
+    def show_menu(self):
+        menu = Menu(self.screen)
+        self.state.current_level, self.state.map_file_path = menu.run()
+        self.start_game()
+
+
+if __name__ == '__main__':
+    game = GameManager()
+    game.show_menu()
+    pygame.quit()
