@@ -147,7 +147,7 @@ Game "Thief and Police" là một trò chơi mô phỏng cuộc truy đuổi gi�
 - **Python**: Ngôn ngữ lập trình chính
 - **Pygame**: Thư viện đồ họa và game
 - **Các thuật toán AI**: DFS, BFS, Local Search, Minimax, A*
-##Link Demo Sản phẩm: https://youtu.be/efd_CPwv6kQ
+## Link Demo Sản phẩm: https://youtu.be/efd_CPwv6kQ
 ## Tác giả
 
 Dự án được phát triển trong khuôn khổ môn học AI IT3160.
